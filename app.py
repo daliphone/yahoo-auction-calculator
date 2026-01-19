@@ -5,7 +5,7 @@ import time
 # --- 頁面設定 ---
 st.set_page_config(page_title="馬尼奇摩拍賣計算機", page_icon="🧮", layout="wide")
 
-# --- CSS 美化與版面調整 (維持 v2.4) ---
+# --- CSS 美化與版面調整 (維持 v2.5) ---
 st.markdown("""
 <style>
     /* 1. 輸入框數字強制加粗、加大 */
@@ -78,23 +78,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- JavaScript: Enter 跳下一格 (增強版修復) ---
-# 邏輯：每 1 秒重新偵測一次輸入框，確保在 Streamlit 刷新後功能不失效
+# --- JavaScript: Enter 跳下一格 (維持 v2.5 修復版) ---
 js_code = """
 <script>
 function bindEnterKey() {
     const inputs = parent.document.querySelectorAll('input[type="number"], input[type="text"]');
     inputs.forEach((input, index) => {
-        // 防止重複綁定 (可選)
         input.removeEventListener('keydown', handleEnter); 
         input.addEventListener('keydown', handleEnter);
         
         function handleEnter(event) {
             if (event.key === 'Enter') {
-                // 阻止 Streamlit 預設的 Submit 行為
                 event.preventDefault();
-                
-                // 找下一個輸入框
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
                     nextInput.focus();
@@ -104,11 +99,7 @@ function bindEnterKey() {
         }
     });
 }
-
-// 初始執行
 setTimeout(bindEnterKey, 1000);
-
-// 由於 Streamlit 會動態刷新 DOM，我們設置一個定時器定期重新綁定
 setInterval(bindEnterKey, 1500);
 </script>
 """
@@ -118,7 +109,6 @@ components.html(js_code, height=0, width=0)
 st.title("🧮 馬尼奇摩拍賣計算機 GUI版")
 
 # --- 建立三欄位佈局 ---
-# 左(說明) | 中(輸入) | 右(結果)
 col_info, col_input, col_result = st.columns([0.8, 1, 1.4])
 
 # ==========================================
@@ -138,12 +128,13 @@ with col_info:
        - 面交/自取：全額收。
        
     3. **金流服務費**: 
-       - 信用卡 **2%** / 其他 **1%**。
+       - 信用卡 **2% ~ 6%** (依期數)。
+       - 其他付款 **1%**。
        - 最低收取 **$1**。
     """)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.caption("操作提示：Enter 鍵已增強跳格功能 (部分瀏覽器可能仍受限)，亦可使用 Tab 鍵。")
+    st.caption("操作提示：Enter 鍵已增強跳格功能，亦可使用 Tab 鍵。")
 
 # ==========================================
 # 【中欄】：試算輸入
@@ -153,7 +144,7 @@ with col_input:
     
     with st.container(border=True):
         
-        # 1. 成本 (placeholder 提示)
+        # 1. 成本
         cost = st.number_input(
             "1. 商品成本 ($)", 
             min_value=0, 
@@ -162,7 +153,7 @@ with col_input:
             placeholder="請輸入商品成本..."
         )
 
-        # 2. 售價 (placeholder 提示)
+        # 2. 售價
         price = st.number_input(
             "2. 商品售價 ($)", 
             min_value=0, 
@@ -183,7 +174,17 @@ with col_input:
         with c3:
             ship_method = st.selectbox("5. 運送", ["一般寄送", "面交/自取"])
         with c4:
-            pay_method = st.selectbox("6. 付款", ["信用卡 (2%)", "非信用卡 (1%)"], index=1)
+            # 定義新的付款選項列表
+            payment_options = [
+                "其他付款(非信用卡)1%",
+                "信用卡一次付清︰2%",
+                "信用卡3期0利率︰3%",
+                "信用卡6期0利率︰3.5%",
+                "信用卡12期0利率︰6%",
+                "信用卡24期0利率︰6%"
+            ]
+            # 預設 index=0 即為 "其他付款(非信用卡)1%"
+            pay_method = st.selectbox("6. 付款", payment_options, index=0)
 
 # ==========================================
 # 【右欄】：計算結果
@@ -192,7 +193,7 @@ with col_result:
     st.subheader("📊 計算結果")
 
     if price is not None:
-        # --- 核心邏輯 (v2.4 保持不變) ---
+        # --- 核心邏輯 (費率更新) ---
         single_item_fee_raw = price * 0.0249
         single_item_fee = round(single_item_fee_raw)
         is_capped = False
@@ -211,11 +212,21 @@ with col_result:
                 fee_2_shipping = 0
 
         total_order_amount = (price * qty) + shipping
-        if "信用卡" in pay_method:
-            payment_rate = 0.02
-        else:
+        
+        # --- 金流費率判斷邏輯 (v2.6 新增) ---
+        if "其他付款" in pay_method:
             payment_rate = 0.01
-            
+        elif "一次付清" in pay_method:
+            payment_rate = 0.02
+        elif "3期" in pay_method:
+            payment_rate = 0.03
+        elif "6期" in pay_method:
+            payment_rate = 0.035
+        elif "12期" in pay_method or "24期" in pay_method:
+            payment_rate = 0.06
+        else:
+            payment_rate = 0.01 # 預設安全值
+
         fee_3_payment_raw = total_order_amount * payment_rate
         fee_3_payment = round(fee_3_payment_raw)
         if total_order_amount > 0 and fee_3_payment < 1:
@@ -227,7 +238,7 @@ with col_result:
         total_cost = (cost * qty) if cost is not None else 0
         gross_profit = final_income - total_cost
 
-        # --- 視覺優化：三個重點數據 (特大字體) ---
+        # --- 視覺優化：三個重點數據 ---
         
         r_col1, r_col2, r_col3 = st.columns(3)
         
@@ -280,10 +291,13 @@ with col_result:
         # --- 詳細公式與費用 ---
         with st.expander("📝 查看詳細計算公式與費用明細", expanded=False):
             st.markdown("#### 1. 費用明細")
+            # 顯示當前選擇的付款方式費率
+            current_rate_display = f"{float(payment_rate*100):g}%" # 自動去除多餘的0 (例如 2.0% -> 2%)
+            
             st.markdown(f"""
             * **成交手續費**: `${fee_1_item}` (單件${single_item_fee} × {qty})
             * **運費手續費**: `${fee_2_shipping}`
-            * **金流服務費**: `${fee_3_payment}` ({int(payment_rate*100)}%)
+            * **金流服務費**: `${fee_3_payment}` (費率 {current_rate_display})
             """)
             
             st.markdown("#### 2. 計算公式驗算")
@@ -312,6 +326,6 @@ with col_result:
 # --- 頁尾 ---
 st.markdown("""
 <div class="footer-text">
-    <b>© 2026 馬尼奇摩拍賣計算機 v2.5</b> | Enter 修復版
+    <b>© 2026 馬尼奇摩拍賣計算機 v2.6</b> | 付款選項擴充版
 </div>
 """, unsafe_allow_html=True)
