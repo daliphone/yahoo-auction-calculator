@@ -4,7 +4,7 @@ import streamlit.components.v1 as components
 # --- 頁面設定 ---
 st.set_page_config(page_title="馬尼奇摩拍賣計算機", page_icon="🧮", layout="wide")
 
-# --- CSS 美化與版面調整 (維持 v2.7 風格) ---
+# --- CSS 美化與版面調整 (維持 v2.9 風格) ---
 st.markdown("""
 <style>
     /* 1. 輸入框數字強制加粗、加大 */
@@ -115,22 +115,36 @@ components.html(js_code, height=0, width=0)
 # --- 主標題 ---
 st.title("🧮 馬尼奇摩拍賣計算機 GUI版")
 
-# --- 建立三欄位佈局 (左側為設定區) ---
+# --- 建立三欄位佈局 ---
 col_info, col_input, col_result = st.columns([0.6, 1.4, 1.2])
 
 # ==========================================
 # 【左欄】：規則說明 & 參數設定 (互動式)
 # ==========================================
 with col_info:
-    st.subheader("⚙️ 費率設定 (可調整)")
+    st.subheader("⚙️ 費率設定")
     
-    # 使用 Expander 包裹，讓畫面預設看起來整潔，展開後可修改細項
-    with st.expander("📝 點此修改計費規則", expanded=True):
+    # 1. 預設閉合 (expanded=False)
+    with st.expander("📝 點此修改計費規則 / 更新公告", expanded=False):
         
+        # 2. 修改前提醒說明 (Warning)
+        st.error("⚠️ **注意**：修改下方數值將「即時」改變右側計算結果，請務必確認輸入正確。")
+        
+        # 3. 公告連結編輯區
+        st.markdown('<p class="setting-label">📢 官方公告連結 (可編輯)</p>', unsafe_allow_html=True)
+        default_url = "https://tw.bid.yahoo.com/help/new_auc/fee/FvfFee.html"
+        announce_link = st.text_input("輸入網址", value=default_url)
+        
+        # 顯示可點擊的連結
+        if announce_link:
+            st.markdown(f"👉 [點此前往：奇摩拍賣交易手續費最新公告]({announce_link})")
+        
+        st.divider()
+
+        # --- 以下為數值設定 (維持 v2.9) ---
         st.markdown('<p class="setting-label">1. 商品成交手續費</p>', unsafe_allow_html=True)
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-            # 輸入 2.49 代表 2.49%
             user_rate_item = st.number_input("費率 (%)", value=2.49, step=0.01, format="%.2f")
         with col_s2:
             user_max_fee = st.number_input("上限 ($)", value=498, step=1)
@@ -147,18 +161,16 @@ with col_info:
         st.markdown('<hr style="margin:5px 0;">', unsafe_allow_html=True)
         
         st.markdown('<p class="setting-label">3. 金流費率設定 (%)</p>', unsafe_allow_html=True)
-        # 為了節省空間，將金流設定稍微緊湊排列
         user_rate_pay_other = st.number_input("其他/非信用卡", value=1.0, step=0.1, format="%.1f")
         user_rate_credit_1 = st.number_input("信用卡一次付清", value=2.0, step=0.1, format="%.1f")
         
-        # 進階分期費率 (可折疊，或直接顯示)
         with st.expander("更多分期費率設定"):
             user_rate_credit_3 = st.number_input("3期0利率", value=3.0, step=0.5)
             user_rate_credit_6 = st.number_input("6期0利率", value=3.5, step=0.5)
             user_rate_credit_12 = st.number_input("12期0利率", value=6.0, step=0.5)
             user_rate_credit_24 = st.number_input("24期0利率", value=6.0, step=0.5)
 
-    # 將使用者輸入的百分比轉為小數點 (例如 2.49 -> 0.0249)
+    # 參數轉換
     RATE_ITEM_FEE = user_rate_item / 100.0
     MAX_ITEM_FEE = user_max_fee
     RATE_SHIPPING_FEE = user_rate_shipping / 100.0
@@ -172,7 +184,8 @@ with col_info:
     RATE_PAY_CREDIT_24 = user_rate_credit_24 / 100.0
     MIN_PAYMENT_FEE = 1
 
-    st.caption("💡 修改上方數字，右側計算將即時更新。")
+    # 閉合狀態下的提示
+    st.info("💡 費率預設為 2.49%。若需修改或查看最新公告，請點擊上方展開設定。")
 
 # ==========================================
 # 【中欄】：試算輸入
@@ -212,8 +225,7 @@ with col_input:
         with c3:
             ship_method = st.selectbox("5. 運送", ["一般寄送", "面交/自取"])
         with c4:
-            # 這裡的選項名稱會根據左側設定的費率「動態生成」！
-            # 使用 :g 格式化去除多餘的0
+            # 動態生成選項
             payment_options = [
                 f"其他付款(非信用卡){float(user_rate_pay_other):g}%",
                 f"信用卡一次付清︰{float(user_rate_credit_1):g}%",
@@ -231,7 +243,7 @@ with col_result:
     st.subheader("📊 計算結果")
 
     if price is not None:
-        # --- 核心邏輯 (使用左側動態變數) ---
+        # --- 核心邏輯 (完全維持 v2.9) ---
         single_item_fee_raw = price * RATE_ITEM_FEE
         single_item_fee = round(single_item_fee_raw)
         is_capped = False
@@ -251,8 +263,7 @@ with col_result:
 
         total_order_amount = (price * qty) + shipping
         
-        # --- 金流費率判斷 ---
-        # 透過檢查字串來匹配費率 (因為字串現在是動態的)
+        # 費率匹配邏輯
         if "其他付款" in pay_method:
             payment_rate = RATE_PAY_OTHER
         elif "一次付清" in pay_method:
@@ -330,7 +341,6 @@ with col_result:
             st.markdown("#### 1. 費用明細")
             current_rate_display = f"{float(payment_rate*100):g}%"
             
-            # 使用 user_rate_item 等變數顯示當前設定
             st.markdown(f"""
             * **成交手續費**: `${fee_1_item}` (費率 {user_rate_item}%, 上限 ${user_max_fee})
             * **運費手續費**: `${fee_2_shipping}` (費率 {user_rate_shipping}%)
@@ -362,6 +372,6 @@ with col_result:
 # --- 頁尾 ---
 st.markdown("""
 <div class="footer-text">
-    <b>© 2026 馬尼奇摩拍賣計算機 v2.9</b> | 動態費率設定版
+    <b>© 2026 馬尼奇摩拍賣計算機 v3.0</b> | 連結管理版
 </div>
 """, unsafe_allow_html=True)
