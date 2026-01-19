@@ -18,38 +18,52 @@ st.markdown("""
         color: #555;
     }
 
-    /* 2. 結果區塊樣式 (三欄位配色) */
+    /* 2. 結果區塊樣式 (三欄位配色 - 字體加大版) */
     .result-box-income {
         background-color: #e3f2fd; /* 實收-藍底 */
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
         text-align: center;
-        border: 1px solid #90caf9;
+        border: 2px solid #90caf9; /* 邊框加粗 */
     }
     .result-box-fee {
         background-color: #fff3e0; /* 費用-橘底 */
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
         text-align: center;
-        border: 1px solid #ffe0b2;
+        border: 2px solid #ffe0b2;
     }
     .result-box-profit {
         background-color: #e8f5e9; /* 獲利-綠底 */
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
         text-align: center;
-        border: 1px solid #a5d6a7;
+        border: 2px solid #a5d6a7;
     }
     .result-box-loss {
         background-color: #ffebee; /* 虧損-紅底 */
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
         text-align: center;
-        border: 1px solid #ef9a9a;
+        border: 2px solid #ef9a9a;
     }
     
-    .label-text { font-size: 14px; color: #555; font-weight: bold; margin-bottom: 5px; display: block;}
-    .value-text { font-size: 28px; font-weight: 900; margin: 0; line-height: 1.2; }
+    .label-text { 
+        font-size: 16px; 
+        color: #444; 
+        font-weight: bold; 
+        margin-bottom: 5px; 
+        display: block;
+    }
+    
+    /* 重點：將結果數字調整為 42px 且超粗體 */
+    .value-text { 
+        font-size: 42px; 
+        font-weight: 900; 
+        margin: 0; 
+        line-height: 1.1; 
+        font-family: 'Arial', sans-serif;
+    }
     
     /* 3. 頁尾 */
     .footer-text {
@@ -64,7 +78,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- JavaScript: Enter 跳下一格 (Focus Next) ---
-# 將此腳本放在這裡以維持 Enter 鍵功能
 js_code = """
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -90,7 +103,7 @@ components.html(js_code, height=0, width=0)
 st.title("🧮 馬尼奇摩拍賣計算機 GUI版")
 
 # --- 建立三欄位佈局 ---
-# 調整比例：左(說明) | 中(輸入) | 右(結果，給多一點空間顯示三個方塊)
+# 左(說明) | 中(輸入) | 右(結果)
 col_info, col_input, col_result = st.columns([0.8, 1, 1.4])
 
 # ==========================================
@@ -118,29 +131,39 @@ with col_info:
     st.caption("操作提示：已開啟 Enter 跳格功能 (依瀏覽器而定)，或請使用 Tab 鍵切換。")
 
 # ==========================================
-# 【中欄】：試算輸入 (使用原生 Container 消除懸浮框)
+# 【中欄】：試算輸入
 # ==========================================
 with col_input:
     st.subheader("⌨️ 試算輸入")
     
-    # 改用 st.container(border=True) 取代原本的 HTML div
-    # 這會產生一個乾淨的邊框，且不會有奇怪的空白間距
     with st.container(border=True):
         
-        # 1. 成本
-        cost = st.number_input("1. 商品成本 ($)", min_value=0, value=None, step=10)
+        # 1. 成本 (加入 placeholder)
+        cost = st.number_input(
+            "1. 商品成本 ($)", 
+            min_value=0, 
+            value=None, 
+            step=10, 
+            placeholder="請輸入商品成本..."
+        )
 
-        # 2. 售價
-        price = st.number_input("2. 商品售價 ($)", min_value=0, value=None, step=10)
+        # 2. 售價 (加入 placeholder)
+        price = st.number_input(
+            "2. 商品售價 ($)", 
+            min_value=0, 
+            value=None, 
+            step=10, 
+            placeholder="請輸入平台售價..."
+        )
 
-        # 3. 數量 & 4. 運費 (並排)
+        # 3. 數量 & 4. 運費
         c1, c2 = st.columns(2)
         with c1:
             qty = st.number_input("3. 數量", min_value=1, value=1, step=1, format="%d")
         with c2:
             shipping = st.number_input("4. 運費 ($)", min_value=0, value=60, step=10, format="%d")
 
-        # 5. 運送 & 6. 付款 (並排)
+        # 5. 運送 & 6. 付款
         c3, c4 = st.columns(2)
         with c3:
             ship_method = st.selectbox("5. 運送", ["一般寄送", "面交/自取"])
@@ -148,13 +171,13 @@ with col_input:
             pay_method = st.selectbox("6. 付款", ["信用卡 (2%)", "非信用卡 (1%)"], index=1)
 
 # ==========================================
-# 【右欄】：計算結果 (三欄並排)
+# 【右欄】：計算結果
 # ==========================================
 with col_result:
     st.subheader("📊 計算結果")
 
     if price is not None:
-        # --- 核心邏輯 (v2.2 保持不變) ---
+        # --- 核心邏輯 (v2.3 保持不變) ---
         single_item_fee_raw = price * 0.0249
         single_item_fee = round(single_item_fee_raw)
         is_capped = False
@@ -189,12 +212,11 @@ with col_result:
         total_cost = (cost * qty) if cost is not None else 0
         gross_profit = final_income - total_cost
 
-        # --- 視覺優化：三個重點數據並排 (3 Columns) ---
+        # --- 視覺優化：三個重點數據 (字體加大版) ---
         
-        # 建立三個欄位
         r_col1, r_col2, r_col3 = st.columns(3)
         
-        # 1. 預估實收 (藍色)
+        # 1. 預估實收
         with r_col1:
             st.markdown(f"""
             <div class="result-box-income">
@@ -203,7 +225,7 @@ with col_result:
             </div>
             """, unsafe_allow_html=True)
             
-        # 2. 平台總費用 (橘色 - 新增區塊)
+        # 2. 平台總費用
         with r_col2:
             st.markdown(f"""
             <div class="result-box-fee">
@@ -212,7 +234,7 @@ with col_result:
             </div>
             """, unsafe_allow_html=True)
             
-        # 3. 預估毛利 (綠色/紅色)
+        # 3. 預估毛利
         with r_col3:
             if cost is not None:
                 profit_style = "result-box-profit" if gross_profit > 0 else "result-box-loss"
@@ -224,45 +246,58 @@ with col_result:
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                # 若未輸入成本，顯示提示
                 st.markdown(f"""
                 <div class="result-box-income" style="background-color:#f5f5f5; border-color:#ddd;">
                     <span class="label-text">預估毛利</span>
-                    <p class="value-text" style="color:#aaa; font-size:20px;">待輸入成本</p>
+                    <p class="value-text" style="color:#ccc; font-size:24px; line-height:1.7;">待輸入<br>成本</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # --- 次要資訊與明細 ---
-        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        # --- 次要資訊 ---
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        st.markdown(f"**訂單總金額**: `${int(total_order_amount):,}`")
         
-        # 訂單總額顯示
-        st.markdown(f"**訂單總金額**: `${int(total_order_amount):,}` <span style='color:gray; font-size:14px'> (({price} × {qty}) + {shipping})</span>", unsafe_allow_html=True)
-        
-        # 利潤率條
         if cost is not None and total_order_amount > 0:
             margin_rate = (gross_profit / total_order_amount) * 100
             st.progress(max(0, min(100, int(margin_rate))))
             st.caption(f"當前利潤率: {margin_rate:.1f}%")
 
-        # 詳細費用 Expander
-        with st.expander("查看費用明細 (Yahoo + 金流)", expanded=False):
+        # --- 詳細公式與費用 (將公式移入此處) ---
+        with st.expander("📝 查看詳細計算公式與費用明細", expanded=False):
+            st.markdown("#### 1. 費用明細")
             st.markdown(f"""
-            * **成交手續費**: `${fee_1_item}` 
+            * **成交手續費**: `${fee_1_item}` (單件${single_item_fee} × {qty})
             * **運費手續費**: `${fee_2_shipping}`
-            * **金流服務費**: `${fee_3_payment}`
+            * **金流服務費**: `${fee_3_payment}` ({int(payment_rate*100)}%)
             """)
+            
+            st.markdown("#### 2. 計算公式驗算")
+            # 顯示詳細算式
+            st.code(f"""
+[訂單總額] = ({price} × {qty}) + {shipping} = {int(total_order_amount)}
+[平台費用] = {fee_1_item} + {fee_2_shipping} + {fee_3_payment} = {total_fees}
+[預估實收] = {int(total_order_amount)} - {total_fees} = {int(final_income)}
+            """.strip())
+            
+            if cost is not None:
+                st.code(f"""
+[總成本]   = {cost} × {qty} = {total_cost}
+[預估毛利] = {int(final_income)} - {total_cost} = {int(gross_profit)}
+                """.strip())
 
     else:
-        # 等待輸入畫面 (維持版面高度)
+        # 等待輸入畫面
         st.markdown("""
-        <div style="text-align:center; padding: 40px; color:#aaa; border: 2px dashed #ddd; border-radius:10px;">
-            請在左側輸入<br><b>成本</b> 與 <b>售價</b><br>以查看結果
+        <div style="text-align:center; padding: 50px; color:#aaa; border: 2px dashed #ddd; border-radius:10px; background-color:#fafafa;">
+            <h3 style="color:#bbb;">👈 等待輸入</h3>
+            請在左側輸入 <b>成本</b> 與 <b>售價</b><br>
+            系統將自動計算結果
         </div>
         """, unsafe_allow_html=True)
 
 # --- 頁尾 ---
 st.markdown("""
 <div class="footer-text">
-    <b>© 2026 馬尼奇摩拍賣計算機 v2.3</b> | 版面優化版
+    <b>© 2026 馬尼奇摩拍賣計算機 v2.4</b> | 視覺強化版
 </div>
 """, unsafe_allow_html=True)
