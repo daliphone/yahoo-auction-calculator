@@ -1,149 +1,90 @@
-import tkinter as tk
-from tkinter import ttk
-import locale
+import streamlit as st
 
-# 設定數字格式 (譬如加上千分位逗號)
-try:
-    locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
-except:
-    locale.setlocale(locale.LC_ALL, '')
+# 1. 設定頁面基本資訊
+st.set_page_config(
+    page_title="馬尼通訊 - 銷售業績試算工具 v2.1",
+    layout="centered"
+)
 
-class SalesCalculatorApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("馬尼通訊 - 銷售業績試算工具 v2.1")
-        self.root.geometry("450x600")
+# 自訂 CSS 樣式：用來實現「數字加粗」與「結果放大」
+st.markdown("""
+    <style>
+    /* 輸入框內的數字加粗 */
+    .stInput input {
+        font-weight: bold;
+        font-size: 18px;
+    }
+    /* 調整標籤文字大小 */
+    .stNumberInput label {
+        font-size: 16px;
+        font-weight: 500;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 標題
+st.title("📱 馬尼通訊 - 業績試算")
+st.markdown("---")
+
+# 2. 建立輸入區塊 (使用 Form 讓 Enter 鍵體驗更好)
+# 使用 st.form 可以讓用戶輸入完按 Enter 就像跳下一格或直接計算
+with st.container():
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 試算輸入：目標與實際
+        target = st.number_input("本月業績目標 (Target)", min_value=0.0, step=1000.0, format="%d")
+        actual = st.number_input("目前實際業績 (Actual)", min_value=0.0, step=1000.0, format="%d")
         
-        # 設定全域字型 (微軟正黑體)
-        self.default_font = ("Microsoft JhengHei", 11)
-        self.bold_font = ("Microsoft JhengHei", 11, "bold")      # 輸入框用
-        self.result_font = ("Microsoft JhengHei", 16, "bold")    # 結果顯示用
-        
-        # 1. 【Enter 跳下一格】的核心邏輯
-        # 綁定所有 Entry 元件，按下 Return (Enter) 時觸發 focus_next_window
-        root.bind_class("Entry", "<Return>", self.focus_next_widget)
+    with col2:
+        # 試算輸入：毛利與係數
+        margin = st.number_input("毛利率 % (Margin)", min_value=0.0, max_value=100.0, step=0.1, format="%.1f")
+        factor = st.number_input("加權係數 (Factor)", value=1.0, step=0.1, format="%.2f")
 
-        # 建立 UI
-        self.create_widgets()
+# 3. 核心邏輯 (維持 v2.0 不變)
+if factor == 0: 
+    factor = 1.0
 
-    def focus_next_widget(self, event):
-        """按下 Enter 跳到下一個 widget"""
-        event.widget.tk_focusNext().focus()
-        return "break"  # 阻止預設的行為 (例如發出系統提示音)
+# 計算公式
+estimated_bonus = (actual * (margin / 100)) * factor
 
-    def create_widgets(self):
-        # 標題
-        title_label = tk.Label(self.root, text="業績與獎金試算", font=("Microsoft JhengHei", 14, "bold"))
-        title_label.pack(pady=15)
+achievement_rate = 0
+if target > 0:
+    achievement_rate = (actual / target) * 100
 
-        # --- 輸入區塊 (Frame) ---
-        input_frame = tk.Frame(self.root)
-        input_frame.pack(pady=10, padx=20, fill="x")
+# 4. 結果顯示區塊
+st.markdown("### 【計算結果】")
 
-        # 欄位列表 (標籤文字, 變數名稱)
-        self.entries = {}
-        fields = [
-            ("本月業績目標 (Target):", "target"),
-            ("目前實際業績 (Actual):", "actual"),
-            ("毛利率 % (Margin):", "margin"),
-            ("加權係數 (選填):", "factor")
-        ]
+# 根據達成率設定顏色 (達標紅色，未達標藍色)
+result_color = "#d32f2f" if achievement_rate >= 100 else "#0055AA"
+result_msg = ""
 
-        for idx, (label_text, key) in enumerate(fields):
-            # 標籤
-            lbl = tk.Label(input_frame, text=label_text, font=self.default_font)
-            lbl.grid(row=idx, column=0, sticky="w", pady=8)
-            
-            # 輸入框
-            # 3. 【試算輸入】數字加粗 -> 使用 self.bold_font
-            ent = tk.Entry(input_frame, font=self.bold_font, justify="right")
-            ent.grid(row=idx, column=1, sticky="e", pady=8, padx=5)
-            self.entries[key] = ent
+if achievement_rate >= 100:
+    result_msg = f"🎉 恭喜達標！達成率：{achievement_rate:.1f}%"
+else:
+    result_msg = f"💪 目前達成率：{achievement_rate:.1f}%，請繼續加油！"
 
-        # 按鈕區
-        btn_frame = tk.Frame(self.root)
-        btn_frame.pack(pady=15)
+# 使用 HTML 語法來實現「極大字體」與「加粗」
+st.markdown(f"""
+    <div style="
+        background-color: #f0f2f6; 
+        padding: 20px; 
+        border-radius: 10px; 
+        text-align: center; 
+        border-left: 5px solid {result_color};">
+        <p style="color: gray; margin: 0; font-size: 16px;">預估收益/獎金</p>
+        <p style="
+            color: {result_color}; 
+            font-size: 50px; 
+            font-weight: 900; 
+            margin: 0;">
+            ${int(estimated_bonus):,}
+        </p>
+        <p style="color: {result_color}; font-weight: bold; margin-top: 10px;">
+            {result_msg}
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
-        calc_btn = tk.Button(btn_frame, text="開始計算", command=self.calculate, 
-                             font=self.bold_font, bg="#4CAF50", fg="white", width=15)
-        calc_btn.pack(side="left", padx=10)
-        
-        # 綁定 Enter 鍵也可以觸發按鈕 (如果焦點在按鈕上)
-        calc_btn.bind("<Return>", lambda event: self.calculate())
-
-        clear_btn = tk.Button(btn_frame, text="清除", command=self.clear_fields, 
-                              font=self.default_font, width=10)
-        clear_btn.pack(side="left", padx=10)
-
-        # 分隔線
-        ttk.Separator(self.root, orient='horizontal').pack(fill='x', padx=20, pady=10)
-
-        # --- 結果顯示區塊 ---
-        result_frame = tk.Frame(self.root)
-        result_frame.pack(pady=10, padx=20, fill="x")
-
-        # 結果標籤
-        tk.Label(result_frame, text="【計算結果】", font=self.default_font).pack(anchor="w")
-        
-        # 2. 【計算結果】加粗放大 -> 使用 self.result_font，並設定顏色
-        self.result_label = tk.Label(result_frame, text="$0", 
-                                     font=self.result_font, fg="#0055AA", pady=10)
-        self.result_label.pack()
-
-        self.info_label = tk.Label(result_frame, text="", font=("Microsoft JhengHei", 10), fg="gray")
-        self.info_label.pack()
-
-    def get_value(self, key):
-        """安全取得數值，若為空則回傳 0"""
-        val = self.entries[key].get().replace(",", "") # 去除可能輸入的逗號
-        try:
-            return float(val) if val else 0.0
-        except ValueError:
-            return 0.0
-
-    def calculate(self):
-        # 取得輸入值
-        target = self.get_value("target")
-        actual = self.get_value("actual")
-        margin = self.get_value("margin")
-        factor = self.get_value("factor")
-        if factor == 0: factor = 1.0 # 預設係數
-
-        # --- v2.0 核心邏輯維持不變 ---
-        # 範例邏輯：(實際業績 * 毛利) * 係數 = 預估獎金/收益
-        # 您可以替換回您真實的 v2.0 運算公式
-        estimated_bonus = (actual * (margin / 100)) * factor
-        
-        achievement_rate = 0
-        if target > 0:
-            achievement_rate = (actual / target) * 100
-
-        # 格式化輸出
-        formatted_bonus = locale.format_string("%d", int(estimated_bonus), grouping=True)
-        formatted_rate = f"{achievement_rate:.1f}%"
-
-        # 更新顯示
-        self.result_label.config(text=f"${formatted_bonus}")
-        
-        # 根據達成率顯示不同提示文字
-        if achievement_rate >= 100:
-            msg = f"恭喜達標！達成率：{formatted_rate}"
-            self.result_label.config(fg="#d32f2f") # 達標顯示紅色慶祝
-        else:
-            msg = f"目前達成率：{formatted_rate}，請繼續加油！"
-            self.result_label.config(fg="#0055AA") # 一般顯示藍色
-            
-        self.info_label.config(text=msg)
-
-    def clear_fields(self):
-        for ent in self.entries.values():
-            ent.delete(0, tk.END)
-        self.result_label.config(text="$0")
-        self.info_label.config(text="")
-        # 重置焦點回第一個格子
-        self.entries["target"].focus_set()
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = SalesCalculatorApp(root)
-    root.mainloop()
+# 底部簡單說明
+st.caption("v2.1 Streamlit Cloud 版本 | 邏輯核心：(實際業績 × 毛利率) × 係數")
