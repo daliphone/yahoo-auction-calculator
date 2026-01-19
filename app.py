@@ -5,7 +5,7 @@ import time
 # --- 頁面設定 ---
 st.set_page_config(page_title="馬尼奇摩拍賣計算機", page_icon="🧮", layout="wide")
 
-# --- CSS 美化與版面調整 (維持 v2.5) ---
+# --- CSS 美化與版面調整 (維持 v2.6) ---
 st.markdown("""
 <style>
     /* 1. 輸入框數字強制加粗、加大 */
@@ -78,7 +78,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- JavaScript: Enter 跳下一格 (維持 v2.5 修復版) ---
+# --- JavaScript: Enter 跳下一格 (維持 v2.6 修復版) ---
 js_code = """
 <script>
 function bindEnterKey() {
@@ -108,8 +108,9 @@ components.html(js_code, height=0, width=0)
 # --- 主標題 ---
 st.title("🧮 馬尼奇摩拍賣計算機 GUI版")
 
-# --- 建立三欄位佈局 ---
-col_info, col_input, col_result = st.columns([0.8, 1, 1.4])
+# --- 建立三欄位佈局 (v2.7 調整寬度) ---
+# 左(說明)變窄 | 中(輸入)變寬以顯示長字串 | 右(結果)稍微縮小
+col_info, col_input, col_result = st.columns([0.6, 1.4, 1.2])
 
 # ==========================================
 # 【左欄】：功能說明
@@ -174,7 +175,7 @@ with col_input:
         with c3:
             ship_method = st.selectbox("5. 運送", ["一般寄送", "面交/自取"])
         with c4:
-            # 定義新的付款選項列表
+            # 定義新的付款選項列表 (維持 v2.6 內容)
             payment_options = [
                 "其他付款(非信用卡)1%",
                 "信用卡一次付清︰2%",
@@ -183,7 +184,6 @@ with col_input:
                 "信用卡12期0利率︰6%",
                 "信用卡24期0利率︰6%"
             ]
-            # 預設 index=0 即為 "其他付款(非信用卡)1%"
             pay_method = st.selectbox("6. 付款", payment_options, index=0)
 
 # ==========================================
@@ -193,7 +193,7 @@ with col_result:
     st.subheader("📊 計算結果")
 
     if price is not None:
-        # --- 核心邏輯 (費率更新) ---
+        # --- 核心邏輯 (維持 v2.6) ---
         single_item_fee_raw = price * 0.0249
         single_item_fee = round(single_item_fee_raw)
         is_capped = False
@@ -213,7 +213,7 @@ with col_result:
 
         total_order_amount = (price * qty) + shipping
         
-        # --- 金流費率判斷邏輯 (v2.6 新增) ---
+        # --- 金流費率判斷邏輯 ---
         if "其他付款" in pay_method:
             payment_rate = 0.01
         elif "一次付清" in pay_method:
@@ -225,7 +225,7 @@ with col_result:
         elif "12期" in pay_method or "24期" in pay_method:
             payment_rate = 0.06
         else:
-            payment_rate = 0.01 # 預設安全值
+            payment_rate = 0.01 
 
         fee_3_payment_raw = total_order_amount * payment_rate
         fee_3_payment = round(fee_3_payment_raw)
@@ -291,8 +291,7 @@ with col_result:
         # --- 詳細公式與費用 ---
         with st.expander("📝 查看詳細計算公式與費用明細", expanded=False):
             st.markdown("#### 1. 費用明細")
-            # 顯示當前選擇的付款方式費率
-            current_rate_display = f"{float(payment_rate*100):g}%" # 自動去除多餘的0 (例如 2.0% -> 2%)
+            current_rate_display = f"{float(payment_rate*100):g}%"
             
             st.markdown(f"""
             * **成交手續費**: `${fee_1_item}` (單件${single_item_fee} × {qty})
@@ -326,6 +325,6 @@ with col_result:
 # --- 頁尾 ---
 st.markdown("""
 <div class="footer-text">
-    <b>© 2026 馬尼奇摩拍賣計算機 v2.6</b> | 付款選項擴充版
+    <b>© 2026 馬尼奇摩拍賣計算機 v2.7</b> | 版面寬度優化版
 </div>
 """, unsafe_allow_html=True)
