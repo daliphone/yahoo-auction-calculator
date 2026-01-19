@@ -1,10 +1,11 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import time
 
 # --- 頁面設定 ---
 st.set_page_config(page_title="馬尼奇摩拍賣計算機", page_icon="🧮", layout="wide")
 
-# --- CSS 美化與版面調整 ---
+# --- CSS 美化與版面調整 (維持 v2.4) ---
 st.markdown("""
 <style>
     /* 1. 輸入框數字強制加粗、加大 */
@@ -18,13 +19,13 @@ st.markdown("""
         color: #555;
     }
 
-    /* 2. 結果區塊樣式 (三欄位配色 - 字體加大版) */
+    /* 2. 結果區塊樣式 (字體特大版) */
     .result-box-income {
         background-color: #e3f2fd; /* 實收-藍底 */
         padding: 10px;
         border-radius: 8px;
         text-align: center;
-        border: 2px solid #90caf9; /* 邊框加粗 */
+        border: 2px solid #90caf9;
     }
     .result-box-fee {
         background-color: #fff3e0; /* 費用-橘底 */
@@ -56,7 +57,7 @@ st.markdown("""
         display: block;
     }
     
-    /* 重點：將結果數字調整為 42px 且超粗體 */
+    /* 結果數字：42px 超粗體 */
     .value-text { 
         font-size: 42px; 
         font-weight: 900; 
@@ -77,24 +78,38 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- JavaScript: Enter 跳下一格 (Focus Next) ---
+# --- JavaScript: Enter 跳下一格 (增強版修復) ---
+# 邏輯：每 1 秒重新偵測一次輸入框，確保在 Streamlit 刷新後功能不失效
 js_code = """
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+function bindEnterKey() {
     const inputs = parent.document.querySelectorAll('input[type="number"], input[type="text"]');
     inputs.forEach((input, index) => {
-        input.addEventListener('keydown', function(event) {
+        // 防止重複綁定 (可選)
+        input.removeEventListener('keydown', handleEnter); 
+        input.addEventListener('keydown', handleEnter);
+        
+        function handleEnter(event) {
             if (event.key === 'Enter') {
+                // 阻止 Streamlit 預設的 Submit 行為
                 event.preventDefault();
+                
+                // 找下一個輸入框
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
                     nextInput.focus();
                     nextInput.select();
                 }
             }
-        });
+        }
     });
-});
+}
+
+// 初始執行
+setTimeout(bindEnterKey, 1000);
+
+// 由於 Streamlit 會動態刷新 DOM，我們設置一個定時器定期重新綁定
+setInterval(bindEnterKey, 1500);
 </script>
 """
 components.html(js_code, height=0, width=0)
@@ -128,7 +143,7 @@ with col_info:
     """)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.caption("操作提示：已開啟 Enter 跳格功能 (依瀏覽器而定)，或請使用 Tab 鍵切換。")
+    st.caption("操作提示：Enter 鍵已增強跳格功能 (部分瀏覽器可能仍受限)，亦可使用 Tab 鍵。")
 
 # ==========================================
 # 【中欄】：試算輸入
@@ -138,7 +153,7 @@ with col_input:
     
     with st.container(border=True):
         
-        # 1. 成本 (加入 placeholder)
+        # 1. 成本 (placeholder 提示)
         cost = st.number_input(
             "1. 商品成本 ($)", 
             min_value=0, 
@@ -147,7 +162,7 @@ with col_input:
             placeholder="請輸入商品成本..."
         )
 
-        # 2. 售價 (加入 placeholder)
+        # 2. 售價 (placeholder 提示)
         price = st.number_input(
             "2. 商品售價 ($)", 
             min_value=0, 
@@ -177,7 +192,7 @@ with col_result:
     st.subheader("📊 計算結果")
 
     if price is not None:
-        # --- 核心邏輯 (v2.3 保持不變) ---
+        # --- 核心邏輯 (v2.4 保持不變) ---
         single_item_fee_raw = price * 0.0249
         single_item_fee = round(single_item_fee_raw)
         is_capped = False
@@ -212,7 +227,7 @@ with col_result:
         total_cost = (cost * qty) if cost is not None else 0
         gross_profit = final_income - total_cost
 
-        # --- 視覺優化：三個重點數據 (字體加大版) ---
+        # --- 視覺優化：三個重點數據 (特大字體) ---
         
         r_col1, r_col2, r_col3 = st.columns(3)
         
@@ -262,7 +277,7 @@ with col_result:
             st.progress(max(0, min(100, int(margin_rate))))
             st.caption(f"當前利潤率: {margin_rate:.1f}%")
 
-        # --- 詳細公式與費用 (將公式移入此處) ---
+        # --- 詳細公式與費用 ---
         with st.expander("📝 查看詳細計算公式與費用明細", expanded=False):
             st.markdown("#### 1. 費用明細")
             st.markdown(f"""
@@ -272,7 +287,6 @@ with col_result:
             """)
             
             st.markdown("#### 2. 計算公式驗算")
-            # 顯示詳細算式
             st.code(f"""
 [訂單總額] = ({price} × {qty}) + {shipping} = {int(total_order_amount)}
 [平台費用] = {fee_1_item} + {fee_2_shipping} + {fee_3_payment} = {total_fees}
@@ -298,6 +312,6 @@ with col_result:
 # --- 頁尾 ---
 st.markdown("""
 <div class="footer-text">
-    <b>© 2026 馬尼奇摩拍賣計算機 v2.4</b> | 視覺強化版
+    <b>© 2026 馬尼奇摩拍賣計算機 v2.5</b> | Enter 修復版
 </div>
 """, unsafe_allow_html=True)
